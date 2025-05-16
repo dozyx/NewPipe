@@ -39,6 +39,17 @@ android {
         }
     }
 
+    signingConfigs {
+        signing {
+            v1SigningEnabled true
+            v2SigningEnabled true
+            storeFile file("$rootProject.projectDir/newpipe.store")
+            storePassword "test111"
+            keyAlias "test"
+            keyPassword "test111"
+        }
+    }
+
     buildTypes {
         debug {
             debuggable true
@@ -67,6 +78,7 @@ android {
             shrinkResources false // disabled to fix F-Droid's reproducible build
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             archivesBaseName = 'app'
+            signingConfig signingConfigs.signing
         }
     }
 
@@ -215,6 +227,7 @@ dependencies {
     // If there’s already a git hash, just add more of it to the end (or remove a letter)
     // to cause jitpack to regenerate the artifact.
     implementation 'com.github.TeamNewPipe.NewPipeExtractor:NewPipeExtractor:v0.24.6'
+//    implementation 'com.github.TeamNewPipe:NewPipeExtractor:67f3301d9fe895fc179e16788013e5d93b4673f0'
     implementation 'com.github.TeamNewPipe:NoNonsense-FilePicker:5.0.0'
 
 /** Checkstyle **/

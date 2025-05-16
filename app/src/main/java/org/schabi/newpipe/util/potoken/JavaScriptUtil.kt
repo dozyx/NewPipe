@@ -11,9 +11,11 @@ import okio.ByteString.Companion.toByteString
  * embedded in a JavaScript snippet.
  */
 fun parseChallengeData(rawChallengeData: String): String {
+    // scrambled：扰乱数据，类型是 JsonArray
     val scrambled = JsonParser.array().from(rawChallengeData)
 
     val challengeData = if (scrambled.size > 1 && scrambled.isString(1)) {
+        // 解扰
         val descrambled = descramble(scrambled.getString(1))
         JsonParser.array().from(descrambled)
     } else {
@@ -45,12 +47,14 @@ fun parseChallengeData(rawChallengeData: String): String {
 }
 
 /**
+ * 返回 integrity token 和有效期
+ *
  * Parses the raw integrity token data obtained from the GenerateIT endpoint to a JavaScript
  * `Uint8Array` that can be embedded directly in JavaScript code, and an [Int] representing the
  * duration of this token in seconds.
  */
 fun parseIntegrityTokenData(rawIntegrityTokenData: String): Pair<String, Long> {
-    val integrityTokenData = JsonParser.array().from(rawIntegrityTokenData)
+    val integrityTokenData = JsonParser.array().from(rawIntegrityTokenData) // JsonArray
     return base64ToU8(integrityTokenData.getString(0)) to integrityTokenData.getLong(1)
 }
 
@@ -82,7 +86,7 @@ fun u8ToBase64(poToken: String): String {
  */
 private fun descramble(scrambledChallenge: String): String {
     return base64ToByteString(scrambledChallenge)
-        .map { (it + 97).toByte() }
+        .map { (it + 97).toByte() } // +97 偏移
         .toByteArray()
         .decodeToString()
 }

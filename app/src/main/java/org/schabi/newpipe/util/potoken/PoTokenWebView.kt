@@ -35,6 +35,7 @@ class PoTokenWebView private constructor(
         val webViewSettings = webView.settings
         //noinspection SetJavaScriptEnabled we want to use JavaScript!
         webViewSettings.javaScriptEnabled = true
+        // 关闭默认安全检测
         if (WebViewFeature.isFeatureSupported(WebViewFeature.SAFE_BROWSING_ENABLE)) {
             WebSettingsCompat.setSafeBrowsingEnabled(webViewSettings, false)
         }
@@ -76,6 +77,7 @@ class PoTokenWebView private constructor(
 
         disposables.add(
             Single.fromCallable {
+                // 读取 po_token.html 里的代码
                 val html = context.assets.open("po_token.html").bufferedReader()
                     .use { it.readText() }
                 return@fromCallable html
@@ -84,6 +86,7 @@ class PoTokenWebView private constructor(
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
                     { html ->
+                        // 加载 https://www.youtube.com 网页，并调用原生方法 downloadAndRunBotguard
                         webView.loadDataWithBaseURL(
                             "https://www.youtube.com",
                             html.replaceFirst(
@@ -115,7 +118,10 @@ class PoTokenWebView private constructor(
             "https://www.youtube.com/api/jnn/v1/Create",
             "[ \"$REQUEST_KEY\" ]",
         ) { responseBody ->
+            // 通过 /api/jnn/v1/Create 接口解扰拿到 challenge 数据（json string）
             val parsedChallengeData = parseChallengeData(responseBody)
+            // 使用 challenge data 执行 runBotGuard js 函数
+            // 结果通过回调 onRunBotguardResult 原生方法返回
             webView.evaluateJavascript(
                 """try {
                     data = $parsedChallengeData
@@ -154,6 +160,7 @@ class PoTokenWebView private constructor(
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "botguardResponse: $botguardResponse")
         }
+        // 使用 js 回调的 botguard 结果调用 /api/jnn/v1/GenerateIT 接口
         makeBotguardServiceRequest(
             "https://www.youtube.com/api/jnn/v1/GenerateIT",
             "[ \"$REQUEST_KEY\", \"$botguardResponse\" ]",
@@ -164,8 +171,11 @@ class PoTokenWebView private constructor(
             val (integrityToken, expirationTimeInSeconds) = parseIntegrityTokenData(responseBody)
 
             // leave 10 minutes of margin just to be sure
+            // 记录过期时间，会减少十分钟作为缓冲
             expirationInstant = Instant.now().plusSeconds(expirationTimeInSeconds - 600)
 
+            // 赋值 integrityToken 给 js 变量
+            // 并向上层返回 PoTokenGenerator 实例，也就是 PoTokenGenerator 实例创建完成
             webView.evaluateJavascript(
                 "this.integrityToken = $integrityToken"
             ) {
@@ -298,6 +308,7 @@ class PoTokenWebView private constructor(
     ) {
         disposables.add(
             Single.fromCallable {
+                // 发起 post 请求
                 return@fromCallable DownloaderImpl.getInstance().post(
                     url,
                     mapOf(
@@ -348,8 +359,9 @@ class PoTokenWebView private constructor(
     override fun close() {
         disposables.dispose()
 
-        webView.clearHistory()
+        webView.clearHistory() // 只清理当前 WebView 的历史栈
         // clears RAM cache and disk cache (globally for all WebViews)
+        // 不能用无痕？
         webView.clearCache(true)
 
         // ensures that the WebView isn't doing anything when destroying it
